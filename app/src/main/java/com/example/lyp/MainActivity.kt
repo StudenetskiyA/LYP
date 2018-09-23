@@ -15,13 +15,18 @@ import android.view.MotionEvent
 
 const val APP_TAG = "lyp-tag"
 
+lateinit var mDbSongsThread: DbSongsThread
+val mUiHandler = Handler()
+var mDb: SongDataBase? = null
+lateinit var service : LYPService
+val state = AppState()
+
 class MainActivity : AppCompatActivity() {
-    private lateinit var mDbSongsThread: DbSongsThread
-    private val mUiHandler = Handler()
-    private var mDb: SongDataBase? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        service = LYPService(this, this)
+
         Log.i(APP_TAG,"App started.")
         setContentView(R.layout.activity_main)
 
@@ -61,11 +66,11 @@ class MainActivity : AppCompatActivity() {
                             when {
                                 Math.abs(distanceX) > Math.abs(distanceY) && distanceX > 0 -> {
                                     //toast(getString(R.string.fab_draged_right))
-                                    insertSongDataToDb(SongData(1,"name",tags="test tag"))
+                                    service.insertSongDataToDb(SongData(1,"name",tags="test tag"))
                                 }
                                 Math.abs(distanceX) > Math.abs(distanceY) && distanceX < 0 -> {
                                     // toast(getString(R.string.fab_draged_left))
-                                    getSongDataFromDb("name")
+                                    service.getSongDataFromDb("name")
                                 }
                                 Math.abs(distanceX) < Math.abs(distanceY) && distanceY < 0 -> {
                                     toast(getString(R.string.fab_draged_up))
@@ -86,39 +91,11 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    private fun insertSongDataToDb(songData: SongData) {
-        val task = Runnable {
-            Log.i(APP_TAG,"insert to DB with name ${songData.name}")
-            mDb?.songDataDao()?.insert(songData) }
-        mDbSongsThread.postTask(task)
-    }
 
-    private fun getSongDataFromDb(songName:String) {
-        val task = Runnable {
-            Log.i(APP_TAG,"getSong from DB with name '$songName'")
-            val songData = mDb?.songDataDao()?.findByName(songName)
-            mUiHandler.post {
-                if (songData == null )  {
-                    toast("No song with name '$songName' in database!!")
-                } else {
-                    bindDataWithUi(songData)
-                }
-            }
-//            val songData = mDb?.songDataDao()?.getAll()
-//            mUiHandler.post {
-//                if (songData == null || songData?.size == 0)  {
-//                    toast("No song with name $songName in database!!")
-//                } else {
-//                    bindDataWithUi(songData.get(0))
-//                }
-//            }
-        }
-        mDbSongsThread.postTask(task)
-    }
 
-    private fun bindDataWithUi(songData: SongData?) {
+    fun bindDataWithUi() {
         Log.i(APP_TAG,"UI bind")
-        hello_label.text = songData?.tags.toString()
+        hello_label.text = service.appState.currentSong.tags
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
