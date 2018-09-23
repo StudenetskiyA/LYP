@@ -26,8 +26,6 @@ class BottomNavigationDrawerFragment: BottomSheetDialogFragment() {
                 R.id.nav2 -> context!!.toast(getString(R.string.nav2_clicked))
                 R.id.nav3 -> context!!.toast(getString(R.string.nav3_clicked))
             }
-            // Add code here to update the UI based on the item selected
-            // For example, swap UI fragments here
             true
         }
     }
@@ -38,5 +36,4 @@ class BottomNavigationDrawerFragment: BottomSheetDialogFragment() {
         toast.setGravity(Gravity.BOTTOM, 0, 600)
         toast.show()
     }
-
 }

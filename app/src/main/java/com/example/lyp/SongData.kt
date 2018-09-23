@@ -7,10 +7,11 @@ import androidx.room.Delete
 import androidx.room.Update
 
 const val TABLE_NAME = "songData"
+const val NAME_COLUMN = "name"
 
-@Entity(tableName = "songData")
+@Entity(tableName = "$TABLE_NAME")
 data class SongData(@PrimaryKey(autoGenerate = true) var id: Long?,
-                    @ColumnInfo(name = "name") var name: String = "",
+                    @ColumnInfo(name = "$NAME_COLUMN") var name: String = "",
                     @ColumnInfo(name = "path") var path: String = "",
                     @ColumnInfo(name = "tags") var tags: String = "",
                     @ColumnInfo(name = "date") var date: String = "",//May be not string?
@@ -26,7 +27,7 @@ interface SongDataDao {
     @Query("SELECT * from songData")
     fun getAll(): List<SongData>
 
-    @Query("SELECT * from songData WHERE name LIKE :songName LIMIT 1")
+    @Query("SELECT * from songData WHERE $NAME_COLUMN LIKE :songName LIMIT 1")
     fun findByName(songName: String): SongData
 
     @Insert(onConflict = REPLACE)

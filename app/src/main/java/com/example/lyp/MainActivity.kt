@@ -16,9 +16,8 @@ import android.view.MotionEvent
 const val APP_TAG = "lyp-tag"
 
 class MainActivity : AppCompatActivity() {
-
-    lateinit var mDbSongsThread: DbSongsThread
-    val mUiHandler = Handler()
+    private lateinit var mDbSongsThread: DbSongsThread
+    private val mUiHandler = Handler()
     private var mDb: SongDataBase? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,7 +26,18 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         setSupportActionBar(bottom_app_bar)
+        initFab()
 
+        //DATABASE
+        Log.i(APP_TAG,"Thread to create/open database started.")
+        mDbSongsThread = DbSongsThread("dbSongsThread")
+        mDbSongsThread.start()
+        mDb = SongDataBase.getInstance(this)
+
+        Log.i(APP_TAG,"End onCreate.")
+    }
+
+    private fun initFab() {
         fab.setOnTouchListener(object : View.OnTouchListener {
             var startX = 0.toFloat()
             var startRawX = 0.toFloat()
@@ -54,7 +64,7 @@ class MainActivity : AppCompatActivity() {
                                     insertSongDataToDb(SongData(1,"name",tags="test tag"))
                                 }
                                 Math.abs(distanceX) > Math.abs(distanceY) && distanceX < 0 -> {
-                                   // toast(getString(R.string.fab_draged_left))
+                                    // toast(getString(R.string.fab_draged_left))
                                     getSongDataFromDb("name")
                                 }
                                 Math.abs(distanceX) < Math.abs(distanceY) && distanceY < 0 -> {
@@ -74,16 +84,6 @@ class MainActivity : AppCompatActivity() {
                 return true
             }
         })
-
-
-        //DATABASE
-        Log.i(APP_TAG,"Thread to create/open database started.")
-        mDbSongsThread = DbSongsThread("dbSongsThread")
-        mDbSongsThread.start()
-
-        mDb = SongDataBase.getInstance(this)
-
-        Log.i(APP_TAG,"End onCreate.")
     }
 
     private fun insertSongDataToDb(songData: SongData) {
