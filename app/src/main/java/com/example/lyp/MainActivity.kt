@@ -1,9 +1,13 @@
 package com.example.lyp
 
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Handler
+import android.os.IBinder
 import android.util.Log
 import android.view.Gravity
 import android.view.Menu
@@ -18,16 +22,38 @@ const val APP_TAG = "lyp-tag"
 lateinit var mDbSongsThread: DbSongsThread
 val mUiHandler = Handler()
 var mDb: SongDataBase? = null
-lateinit var service : LYPService
-val state = AppState()
+lateinit var mView : MainActivity
+
 
 class MainActivity : AppCompatActivity() {
+    var serv: LYPService? = null
+    var isBound = false
+
+    private val myConnection = object : ServiceConnection {
+        override fun onServiceConnected(className: ComponentName,
+                                        service: IBinder) {
+            val binder = service as LYPService.MyLocalBinder
+            serv = binder.getService()
+            isBound = true
+            Log.i(APP_TAG,"Service binded.")
+        }
+
+        override fun onServiceDisconnected(name: ComponentName) {
+            isBound = false
+            Log.i(APP_TAG,"Service unbinded.")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        service = LYPService(this, this)
-
         Log.i(APP_TAG,"App started.")
+
+        val intent = Intent(this, LYPService::class.java)
+        bindService(intent, myConnection, Context.BIND_AUTO_CREATE)
+
+        mView = this
+
+
         setContentView(R.layout.activity_main)
 
         setSupportActionBar(bottom_app_bar)
@@ -66,17 +92,23 @@ class MainActivity : AppCompatActivity() {
                             when {
                                 Math.abs(distanceX) > Math.abs(distanceY) && distanceX > 0 -> {
                                     //toast(getString(R.string.fab_draged_right))
-                                    service.insertSongDataToDb(SongData(1,"name",tags="test tag"))
+                                    serv?.insertSongDataToDb(SongData(1,"name",tags="test tag"))
                                 }
                                 Math.abs(distanceX) > Math.abs(distanceY) && distanceX < 0 -> {
                                     // toast(getString(R.string.fab_draged_left))
-                                    service.getSongDataFromDb("name")
+                                    serv?.getSongDataFromDb("name")
                                 }
                                 Math.abs(distanceX) < Math.abs(distanceY) && distanceY < 0 -> {
                                     toast(getString(R.string.fab_draged_up))
+                                    val intent = Intent(this@MainActivity, LYPService::class.java)
+                                    intent.putExtra(EXTRA_COMMAND, 1)
+                                    startService(intent)
                                 }
                                 Math.abs(distanceX) < Math.abs(distanceY) && distanceY > 0 -> {
                                     toast(getString(R.string.fab_draged_down))
+                                    val intent = Intent(this@MainActivity, LYPService::class.java)
+                                    intent.putExtra(EXTRA_COMMAND, 0)
+                                    startService(intent)
                                 }
                             }
                         } else {
@@ -94,8 +126,10 @@ class MainActivity : AppCompatActivity() {
 
 
     fun bindDataWithUi() {
-        Log.i(APP_TAG,"UI bind")
-        hello_label.text = service.appState.currentSong.tags
+        this@MainActivity.runOnUiThread {
+            Log.i(APP_TAG, "UI bind")
+            hello_label.text = serv?.appState?.count.toString()
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
