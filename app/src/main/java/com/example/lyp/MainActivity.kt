@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.ServiceConnection
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.Handler
 import android.os.IBinder
 import android.util.Log
 import android.view.Gravity
@@ -16,19 +15,17 @@ import android.view.View
 import android.widget.Toast
 import kotlinx.android.synthetic.main.activity_main.*
 import android.view.MotionEvent
+import com.example.lyp.SERVICE_COMMAND.*
 
 const val APP_TAG = "lyp-tag"
 
 lateinit var mDbSongsThread: DbSongsThread
-val mUiHandler = Handler()
 var mDb: SongDataBase? = null
 lateinit var mView : MainActivity
-
 
 class MainActivity : AppCompatActivity() {
     var serv: LYPService? = null
     var isBound = false
-
     private val myConnection = object : ServiceConnection {
         override fun onServiceConnected(className: ComponentName,
                                         service: IBinder) {
@@ -44,28 +41,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        Log.i(APP_TAG,"App started.")
-
-        val intent = Intent(this, LYPService::class.java)
-        bindService(intent, myConnection, Context.BIND_AUTO_CREATE)
-
-        mView = this
-
-
-        setContentView(R.layout.activity_main)
-
-        setSupportActionBar(bottom_app_bar)
-        initFab()
-
-        //DATABASE
-        Log.i(APP_TAG,"Thread to create/open database started.")
-        mDbSongsThread = DbSongsThread("dbSongsThread")
-        mDbSongsThread.start()
-        mDb = SongDataBase.getInstance(this)
-
-        Log.i(APP_TAG,"End onCreate.")
+    fun bindDataWithUi() {
+        this@MainActivity.runOnUiThread {
+            Log.i(APP_TAG, "UI bind")
+            hello_label.text = serv?.appState?.count.toString()
+        }
     }
 
     private fun initFab() {
@@ -101,13 +81,13 @@ class MainActivity : AppCompatActivity() {
                                 Math.abs(distanceX) < Math.abs(distanceY) && distanceY < 0 -> {
                                     toast(getString(R.string.fab_draged_up))
                                     val intent = Intent(this@MainActivity, LYPService::class.java)
-                                    intent.putExtra(EXTRA_COMMAND, 1)
+                                    intent.putExtra(EXTRA_COMMAND, Start)
                                     startService(intent)
                                 }
                                 Math.abs(distanceX) < Math.abs(distanceY) && distanceY > 0 -> {
                                     toast(getString(R.string.fab_draged_down))
                                     val intent = Intent(this@MainActivity, LYPService::class.java)
-                                    intent.putExtra(EXTRA_COMMAND, 0)
+                                    intent.putExtra(EXTRA_COMMAND, Stop)
                                     startService(intent)
                                 }
                             }
@@ -123,13 +103,27 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        Log.i(APP_TAG,"App started.")
 
+        //Binding the service
+        val intent = Intent(this, LYPService::class.java)
+        bindService(intent, myConnection, Context.BIND_AUTO_CREATE)
+        mView = this
 
-    fun bindDataWithUi() {
-        this@MainActivity.runOnUiThread {
-            Log.i(APP_TAG, "UI bind")
-            hello_label.text = serv?.appState?.count.toString()
-        }
+        //Set up view
+        setContentView(R.layout.activity_main)
+        setSupportActionBar(bottom_app_bar)
+        initFab()
+
+        //Init database
+        Log.i(APP_TAG,"Thread to create/open database started.")
+        mDbSongsThread = DbSongsThread("dbSongsThread")
+        mDbSongsThread.start()
+        mDb = SongDataBase.getInstance(this)
+
+        Log.i(APP_TAG,"End onCreate.")
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -151,16 +145,16 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
+    override fun onDestroy() {
+        SongDataBase.destroyInstance()
+        mDbSongsThread.quit()
+        super.onDestroy()
+    }
+
     // This is an extension method for easy Toast call
     fun Context.toast(message: CharSequence) {
         val toast = Toast.makeText(this, message, Toast.LENGTH_SHORT)
         toast.setGravity(Gravity.BOTTOM, 0, 325)
         toast.show()
-    }
-
-    override fun onDestroy() {
-        SongDataBase.destroyInstance()
-        mDbSongsThread.quit()
-        super.onDestroy()
     }
 }

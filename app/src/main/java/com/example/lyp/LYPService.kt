@@ -1,26 +1,21 @@
 package com.example.lyp
 
-import android.app.IntentService
 import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
-import android.content.Context
 import android.content.Intent
-import android.graphics.BitmapFactory
 import android.os.Binder
 import android.os.IBinder
 import android.util.Log
-import android.widget.SeekBar
-import java.util.*
 import kotlin.concurrent.fixedRateTimer
+import com.example.lyp.SERVICE_COMMAND.*
 
 const val EXTRA_COMMAND = "EXTRA_COMMAND"
-//enum class SERVICE_COMMAND(val command:Int) {Start(1) , Stop(0)}
+enum class SERVICE_COMMAND {Start , Stop}
 
 class LYPService: Service()  {
 
     val appState = AppState()
-
     private val myBinder = MyLocalBinder()
 
     override fun onBind(intent: Intent): IBinder? {
@@ -37,7 +32,8 @@ class LYPService: Service()  {
     override fun onStartCommand(intent :Intent, flags :Int, startId :Int) : Int {
         Log.i(APP_TAG, "Try to start service")
 
-        var command = intent.getIntExtra(EXTRA_COMMAND, 0)
+        //Hmm... may this return not SERVICE_COMMAND?
+        val command = intent.getSerializableExtra(EXTRA_COMMAND) as SERVICE_COMMAND
 
 //        val notificationIntent = Intent(this, MainActivity::class.java)
 
@@ -54,10 +50,10 @@ class LYPService: Service()  {
 
         Log.i(APP_TAG, "command = $command")
         when (command) {
-            0 -> {
+            SERVICE_COMMAND.Stop -> {
 
             }
-            1 -> {
+            SERVICE_COMMAND.Start -> {
                 fixedRateTimer("default", false, 0L, 1000){
                     appState.count++
                     Log.i(APP_TAG, "count now = ${appState.count}")
@@ -81,15 +77,13 @@ class LYPService: Service()  {
         val task = Runnable {
             Log.i(APP_TAG,"getSong from DB with name '$songName'")
             val songData = mDb?.songDataDao()?.findByName(songName)
-            mUiHandler.post {
                 if (songData == null )  {
                    // toast("No song with name '$songName' in database!!")
                 } else {
                     Log.i(APP_TAG,"readed from DB tag '${songData.tags}'")
                     appState.currentSong = songData
-                   bindUI()
+                    bindUI()
                 }
-            }
         }
         mDbSongsThread.postTask(task)
     }
