@@ -3,5 +3,6 @@ package com.example.lyp
 data class AppState (
         var currentSong: SongData = SongData(0,""),
         var currentSongTags: String = "",
-        var count: Int = 0
+        var count: Int? = 0,
+        var currentSongsList: List<SongData>? = null
 )

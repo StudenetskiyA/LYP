@@ -13,9 +13,9 @@ import com.example.lyp.SERVICE_COMMAND.*
 const val EXTRA_COMMAND = "EXTRA_COMMAND"
 enum class SERVICE_COMMAND {Start , Stop}
 
-class LYPService: Service()  {
+val appState = AppState()
 
-    val appState = AppState()
+class LYPService: Service()  {
     private val myBinder = MyLocalBinder()
 
     override fun onBind(intent: Intent): IBinder? {
@@ -50,12 +50,12 @@ class LYPService: Service()  {
 
         Log.i(APP_TAG, "command = $command")
         when (command) {
-            SERVICE_COMMAND.Stop -> {
+            Stop -> {
 
             }
-            SERVICE_COMMAND.Start -> {
+            Start -> {
                 fixedRateTimer("default", false, 0L, 1000){
-                    appState.count++
+                    appState.count = appState.count!!+1
                     Log.i(APP_TAG, "count now = ${appState.count}")
                     bindUI()
                 }
@@ -65,28 +65,22 @@ class LYPService: Service()  {
         return START_STICKY
     }
 
+//    fun getSongDataFromDb(songName:String) {
+//        val task = Runnable {
+//            Log.i(APP_TAG,"getSong from DB with name '$songName'")
+//            val songData = mDb?.songDataDao()?.findByName(songName)
+//                if (songData == null )  {
+//                   // toast("No song with name '$songName' in database!!")
+//                } else {
+//                    Log.i(APP_TAG,"readed from DB tag '${songData.tags}'")
+//                    appState.currentSong = songData
+//                    bindUI()
+//                }
+//        }
+//        mDbSongsThread.postTask(task)
+//    }
 
-    fun insertSongDataToDb(songData: SongData) {
-        val task = Runnable {
-            Log.i(APP_TAG,"insert to DB with name ${songData.name}")
-            mDb?.songDataDao()?.insert(songData) }
-        mDbSongsThread.postTask(task)
-    }
 
-    fun getSongDataFromDb(songName:String) {
-        val task = Runnable {
-            Log.i(APP_TAG,"getSong from DB with name '$songName'")
-            val songData = mDb?.songDataDao()?.findByName(songName)
-                if (songData == null )  {
-                   // toast("No song with name '$songName' in database!!")
-                } else {
-                    Log.i(APP_TAG,"readed from DB tag '${songData.tags}'")
-                    appState.currentSong = songData
-                    bindUI()
-                }
-        }
-        mDbSongsThread.postTask(task)
-    }
 
     private fun bindUI() {
             mView.bindDataWithUi()

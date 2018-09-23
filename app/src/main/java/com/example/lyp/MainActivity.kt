@@ -21,7 +21,7 @@ const val APP_TAG = "lyp-tag"
 
 lateinit var mDbSongsThread: DbSongsThread
 var mDb: SongDataBase? = null
-lateinit var mView : MainActivity
+lateinit var mView: MainActivity
 
 class MainActivity : AppCompatActivity() {
     var serv: LYPService? = null
@@ -32,19 +32,20 @@ class MainActivity : AppCompatActivity() {
             val binder = service as LYPService.MyLocalBinder
             serv = binder.getService()
             isBound = true
-            Log.i(APP_TAG,"Service binded.")
+            Log.i(APP_TAG, "Service binded.")
         }
 
         override fun onServiceDisconnected(name: ComponentName) {
             isBound = false
-            Log.i(APP_TAG,"Service unbinded.")
+            Log.i(APP_TAG, "Service unbinded.")
         }
     }
 
     fun bindDataWithUi() {
         this@MainActivity.runOnUiThread {
             Log.i(APP_TAG, "UI bind")
-            hello_label.text = serv?.appState?.count.toString()
+            hello_label.text = appState?.count.toString()
+            //hello_label.text = appState.currentSongsList.toString()
         }
     }
 
@@ -72,11 +73,11 @@ class MainActivity : AppCompatActivity() {
                             when {
                                 Math.abs(distanceX) > Math.abs(distanceY) && distanceX > 0 -> {
                                     //toast(getString(R.string.fab_draged_right))
-                                    serv?.insertSongDataToDb(SongData(1,"name",tags="test tag"))
+                                    insertSongDataToDb(SongData(1, "name", tags = "test tag"))
                                 }
                                 Math.abs(distanceX) > Math.abs(distanceY) && distanceX < 0 -> {
                                     // toast(getString(R.string.fab_draged_left))
-                                    serv?.getSongDataFromDb("name")
+                                    //getSongDataFromDb("name")
                                 }
                                 Math.abs(distanceX) < Math.abs(distanceY) && distanceY < 0 -> {
                                     toast(getString(R.string.fab_draged_up))
@@ -105,7 +106,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.i(APP_TAG,"App started.")
+        Log.i(APP_TAG, "App started.")
 
         //Binding the service
         val intent = Intent(this, LYPService::class.java)
@@ -118,12 +119,29 @@ class MainActivity : AppCompatActivity() {
         initFab()
 
         //Init database
-        Log.i(APP_TAG,"Thread to create/open database started.")
+        Log.i(APP_TAG, "Thread to create/open database started.")
         mDbSongsThread = DbSongsThread("dbSongsThread")
         mDbSongsThread.start()
         mDb = SongDataBase.getInstance(this)
 
-        Log.i(APP_TAG,"End onCreate.")
+        Log.i(APP_TAG, "End onCreate.")
+
+        //test search
+        //
+        val testSongList = mutableListOf(
+                SongData(name = "action song", tags = "action"),
+                SongData(name = "agressive song", tags = "agressive"),
+                SongData(name = "blues song", tags = "blues"),
+                SongData(name = "act-agro song", tags = "action,agressive"),
+                SongData(name = "agro-blues song", tags = "agressive,blues"),
+                SongData(name = "all tags song", tags = "action,agressive,blues")
+        )
+        clearDb()
+        for (song in testSongList) insertSongDataToDb(song)
+//        val searchTags = listOf("action", "agressive")
+
+//        getSongsFromDBToCurrentSongsList(listOf())
+        isSongExistTest("blues ","")
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
