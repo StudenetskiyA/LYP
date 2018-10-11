@@ -1,24 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:tools="http://schemas.android.com/tools"
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:android="http://schemas.android.com/apk/res/android">
+    xmlns:tools="http://schemas.android.com/tools">
 
     <item
-        android:id="@+id/app_bar_fav"
-        android:icon="@drawable/baseline_favorite_white_24"
+        android:id="@+id/app_bar_shuffle"
+        android:icon="@drawable/noshuffle"
         android:title="@string/action_favorite"
-        android:showAsAction="ifRoom" />
+        app:showAsAction="always"
+        tools:ignore="AppCompatResource" />
 
     <item
-        android:id="@+id/app_bar_search"
-        android:icon="@drawable/baseline_search_white_24"
+        android:id="@+id/app_bar_repeat"
+        android:icon="@drawable/repeatall"
         android:title="@string/action_search"
-        android:showAsAction="ifRoom" />
-
-    <item
-        android:id="@+id/app_bar_settings"
-        android:title="@string/action_settings"
-        android:showAsAction="never" />
-        <!--tools:ignore="AppCompatResource" />-->
+        app:showAsAction="always"
+        tools:ignore="AppCompatResource" />
 
 </menu>

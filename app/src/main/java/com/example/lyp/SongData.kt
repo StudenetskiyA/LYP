@@ -8,7 +8,7 @@ import androidx.room.Update
 
 const val TABLE_NAME = "songData"
 const val NAME_COLUMN = "name"
-const val PATH_COLUMN = "path"
+const val PATH_COLUMN = "path" //Path+Name+Extension, ex. C:/folder/1.mp3
 
 @Entity(tableName = "$TABLE_NAME")
 data class SongData(@PrimaryKey(autoGenerate = true) var id: Long? = null,
@@ -18,12 +18,13 @@ data class SongData(@PrimaryKey(autoGenerate = true) var id: Long? = null,
                     @ColumnInfo(name = "date") var date: String = "",//May be not string?
                     @ColumnInfo(name = "count") var count: Int = 0,
                     @ColumnInfo(name = "rating") var rating: Int = 0,
-                    @ColumnInfo(name = "duration") var duraton: Long = 0
+                    @ColumnInfo(name = "duration") var duration: Int = 0
 ){
     //constructor():this(null,"","","","",0,0,0)
     override fun toString():String {
-        return "$name($tags)\n"
+        return "$name,$path,$tags,$date,$duration\n"
     }
+
 }
 
 @Dao
@@ -34,8 +35,8 @@ interface SongDataDao {
     @Query("SELECT * from $TABLE_NAME WHERE $NAME_COLUMN LIKE :songName LIMIT 1")
     fun findByName(songName: String): SongData
 
-    @Query("SELECT COUNT(*) from $TABLE_NAME WHERE $NAME_COLUMN LIKE :songName AND $PATH_COLUMN LIKE :path")
-    fun isExist(songName: String, path: String): Int
+    @Query("SELECT COUNT(*) from $TABLE_NAME WHERE $PATH_COLUMN LIKE :path")
+    fun isExist(path: String): Int
 
     @Insert(onConflict = REPLACE)
     fun insert(songData: SongData)

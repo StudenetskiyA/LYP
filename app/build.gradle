@@ -12,7 +12,7 @@ android {
         main.java.srcDirs += 'build/generated/source/greendao'
     }
     defaultConfig {
-        applicationId "com.example.bottomappbar"
+        applicationId "com.example.lyp"
         minSdkVersion 19
         targetSdkVersion 28
         versionCode 1
@@ -46,19 +46,21 @@ android {
         disable 'RestrictedApi'
     }
     kapt { generateStubs = true }
+    buildToolsVersion '28.0.2'
 }
 
 dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
-   // implementation "org.jetbrains.kotlin:kotlin-stdlib:1.1.2"
-    implementation"org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    // implementation "org.jetbrains.kotlin:kotlin-stdlib:1.1.2"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.constraintlayout:constraintlayout:1.1.2'
     implementation 'com.google.android.material:material:1.0.0-alpha3'
-
-    implementation "androidx.room:room-runtime:2.0.0-alpha1"
+    implementation 'androidx.room:room-runtime:2.0.0-alpha1'
     kapt "androidx.room:room-compiler:2.0.0-alpha1"
-
+    implementation 'com.android.support:appcompat-v7:28.0.2'
+    implementation 'com.android.support:design:28.0.2'
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test:runner:1.1.0-alpha3'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0-alpha3'
+    implementation 'com.android.support.constraint:constraint-layout:1.1.3'
 }

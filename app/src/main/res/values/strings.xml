@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BottomAppBar</string>
+    <string name="app_name">LYP</string>
     <string name="action_favorite">Mark Favorite</string>
     <string name="action_search">Search</string>
     <string name="nav_item1">Navigation Item 1</string>
@@ -17,4 +17,11 @@
     <string name="fab_draged_down">Fav menu item is draged down!</string>
     <string name="fab_draged_left">Fav menu item is draged left!</string>
     <string name="fab_draged_right">Fav menu item is draged rigth!</string>
+    <string name="repeat_one">Repeat one</string>
+    <string name="repeat_stop">Repeat stop</string>
+    <string name="repeat_all">Repeat all</string>
+    <string name="tracks_found_part1">Найдено</string>
+    <string name="tracks_found_part2">треков.</string>
+
+    <string name="default_tags"></string>
 </resources>

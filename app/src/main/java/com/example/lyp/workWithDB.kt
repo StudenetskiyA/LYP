@@ -11,12 +11,17 @@ fun getAllSongsFromDb(): List<SongData>? {
     return mDb?.songDataDao()?.getAll()
 }
 
-fun isSongExistTest(name: String, path: String) {
+fun isSongExistTest(path: String) {
     val task = Runnable {
-        appState.count= mDb?.songDataDao()?.isExist(name,path)
-        mView.bindDataWithUi()
+        appState.count= mDb?.songDataDao()?.isExist(path)
+        appState.mView.bindDataWithUi()
     }
     mDbSongsThread.postTask(task)
+}
+
+fun isSongExist(fullPath: String) : Boolean{
+        val r =  mDb?.songDataDao()?.isExist(fullPath)
+        return  if (r!=null) r>0 else false
 }
 
 fun getSongsFromDBToCurrentSongsList(tags: List<String>, tagsFlag: TagsFlag = Or, sort: SortBy = Name, searchName: String = "") {
@@ -30,23 +35,38 @@ fun getSongsFromDBToCurrentSongsList(tags: List<String>, tagsFlag: TagsFlag = Or
 
         result = result?.filter { it.name.contains(searchName) }
 
-        when (sort) {
-            Name -> result = result?.sortedBy { it.name }
-            Date -> result = result?.sortedBy { it.date }
-            Count -> result = result?.sortedBy { it.count }
+        result = when (sort) {
+            Name -> result?.sortedBy { it.name }
+            Count -> result?.sortedBy { it.count }
+            else -> {
+                result?.sortedBy { it.date }
+            }
         }
-        appState.currentSongsList = result
-        mView.bindDataWithUi()
+
+        if (result!=null) {
+            appState.currentSongsList = result
+            appState.currentShuffledSongsList = result
+            appState.currentShuffledSongsList=appState.currentShuffledSongsList.shuffled()
+        }
+        else {
+            //TODO Find nothing
+        }
+        Log.d(APP_TAG,"Songs found ${appState.currentSongsList.size}")
+        appState.mView.bindDataWithUi()
     }
     mDbSongsThread.postTask(task)
 }
 
 fun insertSongDataToDb(songData: SongData) {
     val task = Runnable {
-        Log.i(APP_TAG, "insert to DB with name ${songData.name}")
+        //Log.i(APP_TAG, "insert to DB with name ${songData.name}")
         mDb?.songDataDao()?.insert(songData)
     }
     mDbSongsThread.postTask(task)
+}
+
+fun increaseRating (n:Int){
+
 }
 
 fun clearDb() {

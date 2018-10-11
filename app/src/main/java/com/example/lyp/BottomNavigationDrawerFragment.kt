@@ -31,7 +31,7 @@ class BottomNavigationDrawerFragment: BottomSheetDialogFragment() {
     }
 
     // This is an extension method for easy Toast call
-    fun Context.toast(message: CharSequence) {
+    private fun Context.toast(message: CharSequence) {
         val toast = Toast.makeText(this, message, Toast.LENGTH_SHORT)
         toast.setGravity(Gravity.BOTTOM, 0, 600)
         toast.show()
