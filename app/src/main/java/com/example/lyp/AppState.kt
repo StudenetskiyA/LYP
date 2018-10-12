@@ -15,7 +15,8 @@ class AppState (
         var currentShuffledSongsList:List<SongData> = ArrayList(),
         var playState:PlayState = Stop,
         var shuffleState:ShuffleState = ShuffleState.NoShuffle,
-        var repeatState: RepeatState = RepeatState.All
+        var repeatState: RepeatState = RepeatState.All,
+        var allTags:String = ""
 ) {
     lateinit var mView: MainActivity
 

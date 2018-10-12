@@ -22,6 +22,7 @@
     <string name="repeat_all">Repeat all</string>
     <string name="tracks_found_part1">Найдено</string>
     <string name="tracks_found_part2">треков.</string>
+    <string name="no_tag_message">еще нет тегов</string>
 
-    <string name="default_tags"></string>
+    <string name="default_tags">sad; night; sex; </string>
 </resources>

@@ -70,7 +70,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginLeft="3dp"
                 android:layout_marginRight="3dp"
-                android:text="current tags, and it and it, current tags, and it and it. current tags, and it and itcurrent tags, and it and itcurrent tags, and it and itcurrent tags, and it and itcurrent tags, and it and itcurrent tags, and it and itcurrent tags, and it and itcurrent tags, and it and it"
+                android:text=""
                 android:textSize="@dimen/tags_font_size" />
 
             <View
@@ -180,7 +180,6 @@
             android:layout_height="wrap_content"
             android:layout_marginLeft="3dp"
             android:layout_marginRight="3dp"
-            android:text="current tags, and it and it, current tags, and it and it. current tags, and it and itcurrent tags, and it and itcurrent tags, and it and itcurrent tags, and it and itcurrent tags, and it and itcurrent tags, and it and itcurrent tags, and it and itcurrent tags, and it and it"
             android:textSize="@dimen/tags_font_size" />
         <View
             android:layout_width="match_parent"

@@ -17,6 +17,7 @@ import android.text.Spannable
 import android.text.TextPaint
 import android.text.method.LinkMovementMethod
 import android.text.style.ClickableSpan
+import android.text.style.ForegroundColorSpan
 import android.view.*
 import android.widget.RelativeLayout
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -41,7 +42,7 @@ val APP_PREFERENCES_SEARCH_SPECIAL = "searchspecial"
 val APP_PREFERENCES_CURRENT_SONG = "currentsong"
 private val APP_PREFERENCES_BUTTON_PADDING = "buttonpadding"
 
-
+var tagsTempField: String = ""
 const val APP_TAG = "lyp-tag"
 var APP_PATH: String = ""
 private lateinit var mSettings: SharedPreferences
@@ -74,7 +75,6 @@ class MainActivity : AppCompatActivity() {
     private var topHeight = 0
     private var bottomHeight = 0
     private var totalHeight = 0
-    var linksSelect = ArrayList<String>()
 
     fun bindDataWithUi() {
         this@MainActivity.runOnUiThread {
@@ -154,8 +154,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 MotionEvent.ACTION_UP -> {
-                    // distance = Math.sqrt(Math.pow(Math.abs(distanceX).toDouble(), 2.0) + Math.pow(Math.abs(distanceY).toDouble(), 2.0))
-                    Log.i(APP_TAG, "Action up, distanceX=$distanceX , distanceY=$distanceY , total = $distance")
+                    Log.d(APP_TAG, "Action up, distanceX=$distanceX , distanceY=$distanceY , total = $distance")
                     if (distance >= startCircle) {
                         when {
                             Math.abs(distanceX) > Math.abs(distanceY) && distanceX > 0 -> {
@@ -205,6 +204,23 @@ class MainActivity : AppCompatActivity() {
             intent.putExtra(EXTRA_COMMAND, Start)
             startService(intent)
         }
+        addtag.setOnClickListener {
+            //Добавляет тег в базу
+            val a = {answer:String ->
+                Log.d(APP_TAG,"Add tag $answer")
+                if (tags.text.contains(answer)) {
+                    //TODO Message - tag already exist
+                } else {
+                    //TODO Answer cant contains ;
+                    answer.trim { it <= ' ' }
+                    //Добавляем в настройки приложения новый тег.
+                    editor?.putString(APP_PREFERENCES_LINKS, tags.text.toString() + " " + answer + "; ")
+                    editor?.apply()
+                    //Снова читаем из настроек.
+                    appState.allTags = readLinkFieldFromSettings()
+                }}
+            getTextFromDialog(this, a)
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -223,13 +239,8 @@ class MainActivity : AppCompatActivity() {
 
         //Init database
         Log.i(APP_TAG, "Thread to create/open database started.")
-        mDbSongsThread.start()
+        if (!mDbSongsThread.isAlive) mDbSongsThread.start()
         mDb = SongDataBase.getInstance(this)
-
-
-//        insertSongDataToDb(SongData(name = "test name", path = "test path" + "/" + "test name",
-//                date = "000", duration = 0))
-
 
         val layout0 = findViewById<RelativeLayout>(R.id.all_layout)
         layout0.afterMeasured {
@@ -309,6 +320,7 @@ class MainActivity : AppCompatActivity() {
     private fun readSettings() {
         mSettings = getSharedPreferences(APP_PREFERENCES, Context.MODE_PRIVATE)
         editor = mSettings.edit()
+        appState.allTags = readLinkFieldFromSettings()
         APP_PATH = Environment.getExternalStorageDirectory().path + "/music/"
         ///= Environment.getExternalStorageDirectory().absolutePath
         Log.i(APP_TAG, "App path is $APP_PATH")
@@ -357,65 +369,72 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-//    internal fun buildLinkField(): Boolean {
-//        val definition = "".trim({ it <= ' ' })
-//        amf.linkField.setMovementMethod(LinkMovementMethod.getInstance())
-//        amf.linkField.setText(definition, TextView.BufferType.SPANNABLE)
-//
-//        val spans = amf.linkField.getText() as Spannable
-//        val indices = amf.getSpaceIndices(amf.linkField.getText().toString(), SPACE_IN_LINK)
-//        var start = 0
-//        var end = 0
-//        for (i in 0..indices.size) {
-//            val clickSpan = object : ClickableSpan() {
-//                override fun onClick(widget: View) {
-//                    val tv = widget as TextView
-//                    val s = tv.text.subSequence(tv.selectionStart, tv.selectionEnd).toString()
-//                    Log.i(APPLICATION_TAG, "from link clicked $s")
-//                    if (s != "") {
-//                        addLinkToText(s)
-//                    }
-//                    buildLinkField()
-//                }
-//
-//                override fun updateDrawState(ds: TextPaint) {}
-//            }
-//            // to cater last/only word
-//            end = if (i < indices.size) indices[i] else spans.length
-//            spans.setSpan(clickSpan, start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-//            start = end + 1
-//        }
-//        val txt = amf.tagField.getText().toString()
-//        var compareText = amf.linkField.getText().toString()
-//        compareText = "; $compareText"
-//        for (i in linkSelect.indices) {
-//            if (txt.contains(linkSelect[i] + SPACE_IN_LINK)) {
-//                Log.d(APP_TAG, "link must be orange = " + linkSelect[i])
-//                val startIndex = compareText.indexOf("; " + linkSelect[i] + SPACE_IN_LINK, 0)
-//                if (startIndex != -1) {
-//                    spans.setSpan(ForegroundColorSpan(resources.getColor(R.color.selectLink)), startIndex, startIndex + linkSelect[i].length, Spannable.SPAN_PRIORITY_SHIFT)
-//                }
-//            }
-//        }
-//        amf.linkField.setText(spans)
-//        buildLinkFieldSearch()
-//        return true
-//    }
+    internal fun buildLinkField() {
+        //Формирует кликабельный и выделенный текст из appState.allTags
+        //Выделенные сейчас теги хранятся в tagsTempField
+        val definition = appState.allTags.trim { it <= ' ' }
+        tags.movementMethod = LinkMovementMethod.getInstance()
+        tags.setText(definition, TextView.BufferType.SPANNABLE)
 
-    private fun addTagToSettings(s: String) {
-    //Добавляет тег в базу
-    if (tags.text.contains(s)) {
-        //TODO Message - tag already exist
-    } else {
-        s.trim { it <= ' ' }
-        //Добавляем в настройки приложения новый тег.
-        editor?.putString(APP_PREFERENCES_LINKS, tags.text.toString() + s + "; ")
-        editor?.apply()
-        //Снова читаем из настроек.
-        //linkField = readLinkFieldFromSettings()
-        //buildLinkField()
+        val spans = tags.text as Spannable
+        val indices = getSpaceIndices(appState.allTags, SPACE_IN_LINK)
+        var start = 0
+        var end = 0
+        for (i in 0..indices.size) {
+            val clickSpan = object : ClickableSpan() {
+                override fun onClick(widget: View) {
+                    val tv = widget as TextView
+                    val s = tv.text.subSequence(tv.selectionStart, tv.selectionEnd).toString()
+                    Log.i(APP_TAG, "from link clicked $s")
+                    if (s != "") {
+                        linkForTrackSelected(s)
+                    }
+                    buildLinkField()
+                }
+
+                override fun updateDrawState(ds: TextPaint) {}
+            }
+            // to cater last/only word
+            end = if (i < indices.size) indices[i] else spans.length
+            spans.setSpan(clickSpan, start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            start = end + 1
+        }
+
+        var compareText = tags.text.toString()
+        compareText = "; $compareText"
+        val ls = appState.allTags.split("; ")
+        for (i in ls.indices) {
+            if (tagsTempField.contains(ls[i] + SPACE_IN_LINK)) {
+               // Log.d(APP_TAG, "link must be orange = " + ls[i])
+                val startIndex = compareText.indexOf("; " + ls[i] + SPACE_IN_LINK, 0)
+                if (startIndex != -1) {
+                    spans.setSpan(ForegroundColorSpan(resources.getColor(R.color.selectLink)), startIndex, startIndex + ls[i].length, Spannable.SPAN_PRIORITY_SHIFT)
+                }
+            }
+        }
+        tags.text = spans
+        // buildLinkFieldSearch()
     }
-}
+
+    internal fun linkForTrackSelected(linkSelected: String) {
+        var txt = linkSelected
+        if (tagsTempField == "")  tagsTempField = ";"
+
+        txt = txt.trim { it <= ' ' }
+
+        tagsTempField = if (tagsTempField.contains(txt + SPACE_IN_LINK)) {
+            val end = tagsTempField.indexOf(txt + SPACE_IN_LINK)
+            tagsTempField.substring(0, end) + tagsTempField.substring(end + txt.length + 1, tagsTempField.length)
+        } else {
+            tagsTempField + txt + SPACE_IN_LINK
+        }
+        Log.d("$APP_TAG#tags","tagTempField is $tagsTempField")
+        buildLinkField()
+    }
+
+    fun save() {
+
+    }
 
     private fun readLinkFieldFromSettings(): String {
         //Возвращает все теги из настроек.
@@ -424,9 +443,10 @@ class MainActivity : AppCompatActivity() {
         var start = 0
         var i = 0
         var count = 0
+
         if (mSettings.contains(APP_PREFERENCES_LINKS)) {
             links = mSettings.getString(APP_PREFERENCES_LINKS, defaultValue)
-            Log.d(APP_TAG, "Links from settings load: " + links);
+            Log.d(APP_TAG, "Links from settings load: $links")
         } else
             links = defaultValue
         if (links == "") links = defaultValue
@@ -435,14 +455,11 @@ class MainActivity : AppCompatActivity() {
             count++
             start = links.indexOf(";", start) + 2
         }
-        linksSelect = ArrayList(count)
         start = 0
         val names = ArrayList<String>()
-        while (links.indexOf(";", start) != -1) {
-            linksSelect[i] = links.substring(start, links.indexOf(";", start))
-            names.add(linksSelect[i])
+        while ( links.indexOf(";", start) != -1) {
+            names.add(links.substring(start, links.indexOf(";", start)))
             start = links.indexOf(";", start) + 2
-            // Log.i(APPLICATION_TAG, linkSelect[i]);
             i++
         }
         names.sort()
@@ -453,9 +470,10 @@ class MainActivity : AppCompatActivity() {
             i++
         }
         Log.i(APP_TAG, "Links from settings load and sorted: $links")
+        appState.allTags = links
+        buildLinkField()
         return links
     }
-
 
     override fun onOptionsItemSelected(item: MenuItem?): Boolean {
         when (item!!.itemId) {
