@@ -1,5 +1,6 @@
 package com.example.lyp
 
+import android.annotation.SuppressLint
 import android.content.*
 import android.graphics.Point
 import androidx.appcompat.app.AppCompatActivity
@@ -54,6 +55,7 @@ var namesInList = ArrayList<ViewSongOnList>()
 
 class MainActivity : AppCompatActivity() {
     var serv: LYPService? = null
+    var menu: Menu? = null
     var isBound = false
     private val myConnection = object : ServiceConnection {
         override fun onServiceConnected(className: ComponentName,
@@ -76,6 +78,7 @@ class MainActivity : AppCompatActivity() {
     private var bottomHeight = 0
     private var totalHeight = 0
 
+    @SuppressLint("SetTextI18n")
     fun bindDataWithUi() {
         this@MainActivity.runOnUiThread {
             Log.i(APP_TAG, "UI bind")
@@ -86,7 +89,7 @@ class MainActivity : AppCompatActivity() {
                 namesInList.add(ViewSongOnList(song.name, song.duration))
             }
             //Bind selected track in list
-            val n = appState.currentSongsList.indexOf(appState.currentSong)
+            val n = appState.currentSongIndex
             if (n != -1) {
                 current_list.setItemChecked(n, true)
                 current_list.smoothScrollToPosition(n)
@@ -94,10 +97,10 @@ class MainActivity : AppCompatActivity() {
             adapter.notifyDataSetChanged()
 
             //Bind current track
-            track_name.text = appState.currentSong.name
+            track_name.text = appState.getCurrentSong().name
 
             //Bind total found
-            tracks_found.text = getString(R.string.tracks_found_part1) + appState.currentSongsList.size + getString(R.string.tracks_found_part2)
+            tracks_found.text = """${getString(R.string.tracks_found_part1)} ${appState.currentSongsList.size} ${getString(R.string.tracks_found_part2)}"""
 
             //TODO UI Bind main button
             when (appState.playState) {
@@ -107,13 +110,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun getPointOfView(view: View): Point {
-        val location = IntArray(2)
-        view.getLocationInWindow(location)
-        return Point(location[0], location[1])
-    }
-
-    private fun initFab() {
+    private fun createFabListener() {
+        fun getPointOfView(view: View): Point {
+            val location = IntArray(2)
+            view.getLocationInWindow(location)
+            return Point(location[0], location[1])
+        }
         //val step = 4
         val startCircle = 100
         val fabButton: FloatingActionButton = findViewById(R.id.fab)
@@ -197,9 +199,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun createListener() {
-        initFab()
+        createFabListener()
         current_list.setOnItemClickListener { parent, view, position, id ->
-            appState.currentSong = appState.currentSongsList[position]
+            appState.currentSongIndex = position
             val intent = Intent(this@MainActivity, LYPService::class.java)
             intent.putExtra(EXTRA_COMMAND, Start)
             startService(intent)
@@ -273,23 +275,13 @@ class MainActivity : AppCompatActivity() {
         Log.i(APP_TAG, "End onCreate.")
     }
 
-    private inline fun <T : View> T.afterMeasured(crossinline f: T.() -> Unit) {
-        viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
-            override fun onGlobalLayout() {
-                if (measuredWidth > 0 && measuredHeight > 0) {
-                    viewTreeObserver?.removeOnGlobalLayoutListener(this)
-                    f()
-                }
-            }
-        })
-    }
-
     private fun showLinksBar(show: Boolean) {
         if (show) {
             tags_bar.visibility = View.VISIBLE
             val tagsLayout = findViewById<LinearLayout>(R.id.tags_bar)
             val layoutParams = tagsLayout.layoutParams as android.widget.RelativeLayout.LayoutParams
-            val pxBottomMargin = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, bottomHeight - 100f + 8f, resources.getDisplayMetrics())
+            //TODO Not 120f, calculate it from screen. May be get virtual bar(back and etc) height?
+            val pxBottomMargin = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, bottomHeight - 120f, resources.displayMetrics)
 
             layoutParams.setMargins(0, 0, 0, Math.round(pxBottomMargin))
             tagsLayout.layoutParams = layoutParams
@@ -300,10 +292,9 @@ class MainActivity : AppCompatActivity() {
                 params.height = totalHeight - bottomHeight - topHeight - tagsLayout.height
                 Log.d(APP_TAG, "Set list layout height ${params.height}")
                 innerLayout.layoutParams = params
-                val n = appState.currentSongsList.indexOf(appState.currentSong)
-                if (n != -1) {
-                    current_list.setItemChecked(n, true)
-                    current_list.smoothScrollToPositionFromTop(n, 2)
+                if (appState.currentSongIndex != -1) {
+                    current_list.setItemChecked(appState.currentSongIndex, true)
+                    current_list.smoothScrollToPositionFromTop(appState.currentSongIndex, 2)
                 }
                 adapter.notifyDataSetChanged()
             }
@@ -353,7 +344,8 @@ class MainActivity : AppCompatActivity() {
                 Log.i(APP_TAG, "$newSongAdded new songs added.")
                 getSongsFromDBToCurrentSongsList(listOf())
                 if (appState.currentSongsList.isNotEmpty())//TODO && if !play
-                    appState.currentSong = appState.currentSongsList[0]
+                    appState.currentSongIndex = 0
+                bindDataWithUi()
             } else {
                 Log.i(APP_TAG, "Trouble with music folder.")
             }
@@ -361,7 +353,6 @@ class MainActivity : AppCompatActivity() {
         mDbSongsThread.postTask(task)
     }
 
-    var menu: Menu? = null
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         this.menu = menu
         val inflater = menuInflater
@@ -369,70 +360,11 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    internal fun buildLinkField() {
-        //Формирует кликабельный и выделенный текст из appState.allTags
-        //Выделенные сейчас теги хранятся в tagsTempField
-        val definition = appState.allTags.trim { it <= ' ' }
-        tags.movementMethod = LinkMovementMethod.getInstance()
-        tags.setText(definition, TextView.BufferType.SPANNABLE)
-
-        val spans = tags.text as Spannable
-        val indices = getSpaceIndices(appState.allTags, SPACE_IN_LINK)
-        var start = 0
-        var end = 0
-        for (i in 0..indices.size) {
-            val clickSpan = object : ClickableSpan() {
-                override fun onClick(widget: View) {
-                    val tv = widget as TextView
-                    val s = tv.text.subSequence(tv.selectionStart, tv.selectionEnd).toString()
-                    Log.i(APP_TAG, "from link clicked $s")
-                    if (s != "") {
-                        linkForTrackSelected(s)
-                    }
-                    buildLinkField()
-                }
-
-                override fun updateDrawState(ds: TextPaint) {}
-            }
-            // to cater last/only word
-            end = if (i < indices.size) indices[i] else spans.length
-            spans.setSpan(clickSpan, start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-            start = end + 1
-        }
-
-        var compareText = tags.text.toString()
-        compareText = "; $compareText"
-        val ls = appState.allTags.split("; ")
-        for (i in ls.indices) {
-            if (tagsTempField.contains(ls[i] + SPACE_IN_LINK)) {
-               // Log.d(APP_TAG, "link must be orange = " + ls[i])
-                val startIndex = compareText.indexOf("; " + ls[i] + SPACE_IN_LINK, 0)
-                if (startIndex != -1) {
-                    spans.setSpan(ForegroundColorSpan(resources.getColor(R.color.selectLink)), startIndex, startIndex + ls[i].length, Spannable.SPAN_PRIORITY_SHIFT)
-                }
-            }
-        }
-        tags.text = spans
-        // buildLinkFieldSearch()
+    private fun saveTrackTags() {
+        insertSongDataToDb(appState.getCurrentSong())
     }
 
-    internal fun linkForTrackSelected(linkSelected: String) {
-        var txt = linkSelected
-        if (tagsTempField == "")  tagsTempField = ";"
-
-        txt = txt.trim { it <= ' ' }
-
-        tagsTempField = if (tagsTempField.contains(txt + SPACE_IN_LINK)) {
-            val end = tagsTempField.indexOf(txt + SPACE_IN_LINK)
-            tagsTempField.substring(0, end) + tagsTempField.substring(end + txt.length + 1, tagsTempField.length)
-        } else {
-            tagsTempField + txt + SPACE_IN_LINK
-        }
-        Log.d("$APP_TAG#tags","tagTempField is $tagsTempField")
-        buildLinkField()
-    }
-
-    fun save() {
+    fun saveButtonState() {
 
     }
 
@@ -473,6 +405,70 @@ class MainActivity : AppCompatActivity() {
         appState.allTags = links
         buildLinkField()
         return links
+    }
+
+    private fun buildLinkField() {
+        //Формирует кликабельный и выделенный текст из appState.allTags
+        //Выделенные сейчас теги хранятся в tagsTempField
+        val definition = appState.allTags.trim { it <= ' ' }
+        tags.movementMethod = LinkMovementMethod.getInstance()
+        tags.setText(definition, TextView.BufferType.SPANNABLE)
+
+        val spans = tags.text as Spannable
+        val indices = getSpaceIndices(appState.allTags, SPACE_IN_LINK)
+        var start = 0
+        var end: Int
+        for (i in 0..indices.size) {
+            val clickSpan = object : ClickableSpan() {
+                override fun onClick(widget: View) {
+                    val tv = widget as TextView
+                    val s = tv.text.subSequence(tv.selectionStart, tv.selectionEnd).toString()
+                    Log.i("$APP_TAG#tags", "from link clicked $s")
+                    if (s != "") {
+                        selectLinkForTrack(s)
+                    }
+                    buildLinkField()
+                }
+
+                override fun updateDrawState(ds: TextPaint) {}
+            }
+            // to cater last/only word
+            end = if (i < indices.size) indices[i] else spans.length
+            spans.setSpan(clickSpan, start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            start = end + 1
+        }
+
+        var compareText = tags.text.toString()
+        compareText = "; $compareText"
+        val ls = appState.allTags.split("; ")
+        for (i in ls.indices) {
+            if (tagsTempField.contains(ls[i] + SPACE_IN_LINK)) {
+                // Log.d(APP_TAG, "link must be orange = " + ls[i])
+                val startIndex = compareText.indexOf("; " + ls[i] + SPACE_IN_LINK, 0)
+                if (startIndex != -1) {
+                    spans.setSpan(ForegroundColorSpan(resources.getColor(R.color.selectLink)), startIndex, startIndex + ls[i].length, Spannable.SPAN_PRIORITY_SHIFT)
+                }
+            }
+        }
+        tags.text = spans
+    }
+
+    private fun selectLinkForTrack(linkSelected: String) {
+        var txt = linkSelected
+        if (tagsTempField == "")  tagsTempField = ";"
+
+        txt = txt.trim { it <= ' ' }
+
+        tagsTempField = if (tagsTempField.contains(txt + SPACE_IN_LINK)) {
+            val end = tagsTempField.indexOf(txt + SPACE_IN_LINK)
+            tagsTempField.substring(0, end) + tagsTempField.substring(end + txt.length + 1, tagsTempField.length)
+        } else {
+            tagsTempField + txt + SPACE_IN_LINK
+        }
+        Log.d("$APP_TAG#tags","tagTempField is $tagsTempField")
+        appState.getCurrentSong().tags = tagsTempField
+        saveTrackTags()
+        buildLinkField()
     }
 
     override fun onOptionsItemSelected(item: MenuItem?): Boolean {

@@ -8,8 +8,7 @@ enum class SortState {ByName, ByDate, ByCount}
 enum class RepeatState {All, One, Stop}
 
 class AppState (
-        var currentSong: SongData = SongData(0,""),
-        var currentSongTags: String = "",
+        var currentSongIndex: Int = 0,
         var count: Int? = 0,
         var currentSongsList:List<SongData> = ArrayList(),
         var currentShuffledSongsList:List<SongData> = ArrayList(),
@@ -19,6 +18,10 @@ class AppState (
         var allTags:String = ""
 ) {
     lateinit var mView: MainActivity
+
+    fun getCurrentSong():SongData {
+      return currentSongsList[currentSongIndex]
+    }
 
     fun init(mv: MainActivity) {
         mView = mv

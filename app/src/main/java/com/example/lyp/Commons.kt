@@ -7,6 +7,8 @@ import java.util.ArrayList
 import android.R.string.cancel
 import android.content.DialogInterface
 import android.text.InputType
+import android.view.View
+import android.view.ViewTreeObserver
 import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 
@@ -57,4 +59,16 @@ fun getTextFromDialog (context : Context, f : (String) -> Unit ) {
     builder.setNegativeButton("Cancel") { dialog, _ -> dialog.cancel() }
 
     builder.show()
+}
+
+inline fun <T : View> T.afterMeasured(crossinline f: T.() -> Unit) {
+    //Do something after layout complite loads
+    viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+        override fun onGlobalLayout() {
+            if (measuredWidth > 0 && measuredHeight > 0) {
+                viewTreeObserver?.removeOnGlobalLayoutListener(this)
+                f()
+            }
+        }
+    })
 }
