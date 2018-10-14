@@ -15,6 +15,7 @@ class AppState (
         var playState:PlayState = Stop,
         var shuffleState:ShuffleState = ShuffleState.NoShuffle,
         var repeatState: RepeatState = RepeatState.All,
+        var sortState: SortState = SortState.ByName,
         var allTags:String = ""
 ) {
     lateinit var mView: MainActivity
