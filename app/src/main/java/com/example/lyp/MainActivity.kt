@@ -22,19 +22,19 @@ import android.text.style.ForegroundColorSpan
 import android.view.*
 import android.widget.RelativeLayout
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import android.view.ViewTreeObserver
 import android.widget.LinearLayout
 import com.google.android.material.bottomappbar.BottomAppBar
 import android.util.TypedValue
 import android.widget.TextView
+import androidx.core.content.edit
 import kotlin.collections.ArrayList
 
-val APP_PREFERENCES = "mysettings"
+const val APP_PREFERENCES = "mysettings"
 val APP_PREFERENCES_MUSIC_FOLDER = "musicfolder"
-val APP_PREFERENCES_LINKS = "links"
-val APP_PREFERENCES_RANDOM = "random"
-val APP_PREFERENCES_REPEAT = "repeat"
-val APP_PREFERENCES_SORT = "repeat"
+const val APP_PREFERENCES_LINKS = "links"
+const val APP_PREFERENCES_RANDOM = "random"
+const val APP_PREFERENCES_REPEAT = "repeat"
+const val APP_PREFERENCES_SORT: String = "sort"
 val APP_PREFERENCES_PAGE = "page"
 val APP_PREFERENCES_SEARCH_STRING = "searchstring"
 val APP_PREFERENCES_ANTISEARCH_STRING = "antisearchstring"
@@ -43,8 +43,7 @@ val APP_PREFERENCES_CURRENT_SONG = "currentsong"
 
 const val APP_TAG = "lyp-tag"
 var APP_PATH: String = ""
-private lateinit var mSettings: SharedPreferences
-var editor: SharedPreferences.Editor? = null
+private lateinit var sharedPreferences: SharedPreferences
 val mDbSongsThread: DbSongsThread = DbSongsThread("dbSongsThread")
 var mDb: SongDataBase? = null
 lateinit var adapter: SongListAdapter
@@ -106,6 +105,26 @@ class MainActivity : AppCompatActivity() {
             when (appState.playState) {
                 PlayState.Play -> fab.setImageDrawable(resources.getDrawable(R.drawable.pause))
                 PlayState.Stop, PlayState.Pause -> fab.setImageDrawable(resources.getDrawable(R.drawable.play))
+            }
+            Log.d("$APP_TAG#bind", "Bind repeat = ${appState.repeatState}")
+            when (appState.repeatState) {
+                RepeatState.One -> {
+                    menu?.findItem(R.id.app_bar_repeat)?.icon = resources.getDrawable(R.drawable.repeatone)
+                }
+                RepeatState.Stop -> {
+                    menu?.findItem(R.id.app_bar_repeat)?.icon = resources.getDrawable(R.drawable.repeatstop)
+                }
+                else -> {
+                    menu?.findItem(R.id.app_bar_repeat)?.icon = resources.getDrawable(R.drawable.repeatall)
+                }
+            }
+            when (appState.shuffleState) {
+                ShuffleState.Shuffle -> {
+                    menu?.findItem(R.id.app_bar_shuffle)?.icon = resources.getDrawable(R.drawable.yesshuffle)
+                }
+                else -> {
+                    menu?.findItem(R.id.app_bar_shuffle)?.icon = resources.getDrawable(R.drawable.noshuffle)
+                }
             }
         }
     }
@@ -216,8 +235,9 @@ class MainActivity : AppCompatActivity() {
                     //TODO Answer cant contains ;
                     answer.trim { it <= ' ' }
                     //Добавляем в настройки приложения новый тег.
-                    editor?.putString(APP_PREFERENCES_LINKS, tags.text.toString() + " " + answer + "; ")
-                    editor?.apply()
+                    sharedPreferences.edit {
+                        putString(APP_PREFERENCES_LINKS, tags.text.toString() + " " + answer + "; ")
+                    }
                     //Снова читаем из настроек.
                     appState.allTags = readLinkFieldFromSettings()
                 }
@@ -315,12 +335,31 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun readSettings() {
-        mSettings = getSharedPreferences(APP_PREFERENCES, Context.MODE_PRIVATE)
-        editor = mSettings.edit()
+        sharedPreferences = getSharedPreferences(APP_PREFERENCES, Context.MODE_PRIVATE)
         appState.allTags = readLinkFieldFromSettings()
         APP_PATH = Environment.getExternalStorageDirectory().path + "/music/"
-        ///= Environment.getExternalStorageDirectory().absolutePath
         Log.i(APP_TAG, "App path is $APP_PATH")
+        //Load button(shuffle, repeat etc...) from settings
+        if (sharedPreferences.contains(APP_PREFERENCES_RANDOM)) {
+            when (sharedPreferences.getString(APP_PREFERENCES_RANDOM, ShuffleState.NoShuffle.toString())) {
+                ShuffleState.Shuffle.toString() -> appState.shuffleState = ShuffleState.Shuffle
+                else -> appState.shuffleState = ShuffleState.NoShuffle
+            }
+        } else
+            appState.shuffleState = ShuffleState.NoShuffle
+        if (sharedPreferences.contains(APP_PREFERENCES_REPEAT)) {
+            Log.d("$APP_TAG#settings", "Repeat state= ${sharedPreferences.getString(APP_PREFERENCES_REPEAT, RepeatState.All.toString())}")
+            when (sharedPreferences.getString(APP_PREFERENCES_REPEAT, RepeatState.All.toString())) {
+                RepeatState.One.toString() -> appState.repeatState = RepeatState.One
+                RepeatState.Stop.toString() -> appState.repeatState = RepeatState.Stop
+                else -> appState.repeatState = RepeatState.All
+            }
+        } else
+            appState.repeatState = RepeatState.All
+
+        //TODO Sort state load
+
+        bindDataWithUi()
     }
 
     private fun readMusicDir() {
@@ -359,20 +398,17 @@ class MainActivity : AppCompatActivity() {
         mDbSongsThread.postTask(task)
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        this.menu = menu
-        val inflater = menuInflater
-        inflater.inflate(R.menu.bottomappbar_menu, menu)
-        return true
-    }
-
     private fun saveTrackTags() {
         if (appState.getCurrentSong() != null)
             insertSongDataToDb(appState.getCurrentSong()!!)
     }
 
-    fun saveButtonState() {
-
+    private fun saveButtonState() {
+        sharedPreferences.edit {
+            putString(APP_PREFERENCES_REPEAT, appState.repeatState.toString())
+            putString(APP_PREFERENCES_RANDOM, appState.shuffleState.toString())
+            putString(APP_PREFERENCES_SORT, appState.sortState.toString())
+        }
     }
 
     private fun readLinkFieldFromSettings(): String {
@@ -383,8 +419,8 @@ class MainActivity : AppCompatActivity() {
         var i = 0
         var count = 0
 
-        if (mSettings.contains(APP_PREFERENCES_LINKS)) {
-            links = mSettings.getString(APP_PREFERENCES_LINKS, defaultValue)
+        if (sharedPreferences.contains(APP_PREFERENCES_LINKS)) {
+            links = sharedPreferences.getString(APP_PREFERENCES_LINKS, defaultValue)
             Log.d(APP_TAG, "Links from settings load: $links")
         } else
             links = defaultValue
@@ -450,7 +486,7 @@ class MainActivity : AppCompatActivity() {
         for (i in ls.indices) {
             if (appState.getCurrentSong() != null) {
                 if (appState.getCurrentSong()!!.tags.contains(ls[i] + SPACE_IN_LINK)) {
-                   // Log.d(APP_TAG, "link must be orange = " + ls[i])
+                    // Log.d(APP_TAG, "link must be orange = " + ls[i])
                     val startIndex = compareText.indexOf("; " + ls[i] + SPACE_IN_LINK, 0)
                     if (startIndex != -1) {
                         spans.setSpan(ForegroundColorSpan(resources.getColor(R.color.selectLink)), startIndex, startIndex + ls[i].length, Spannable.SPAN_PRIORITY_SHIFT)
@@ -480,24 +516,34 @@ class MainActivity : AppCompatActivity() {
         buildLinkField()
     }
 
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        this.menu = menu
+        val inflater = menuInflater
+        inflater.inflate(R.menu.bottomappbar_menu, menu)
+        return true
+    }
+
     override fun onOptionsItemSelected(item: MenuItem?): Boolean {
         when (item!!.itemId) {
             R.id.app_bar_shuffle -> {
                 if (appState.shuffleState == ShuffleState.Shuffle) {
                     appState.shuffleState = ShuffleState.NoShuffle
                     item.icon = resources.getDrawable(R.drawable.noshuffle)
+                    //You can call binsUI instead, but it faster
                     toast("Shuffle off")
                 } else {
                     appState.shuffleState = ShuffleState.Shuffle
                     item.icon = resources.getDrawable(R.drawable.yesshuffle)
                     toast("Shuffle on")
                 }
+                saveButtonState()
             }
             R.id.app_bar_repeat -> {
                 when (appState.repeatState) {
                     RepeatState.All -> {
                         appState.repeatState = RepeatState.One
                         item.icon = resources.getDrawable(R.drawable.repeatone)
+                        //You can call bindUI instead, but it faster
                         toast(getString(R.string.repeat_one))
                     }
                     RepeatState.One -> {
@@ -511,9 +557,8 @@ class MainActivity : AppCompatActivity() {
                         toast(getString(R.string.repeat_all))
                     }
                 }
-                toast(getString(R.string.search_clicked))
+                saveButtonState()
             }
-            // R.id.app_bar_settings -> toast(getString(R.string.settings_clicked))
             android.R.id.home -> {
                 val bottomNavDrawerFragment = BottomNavigationDrawerFragment()
                 bottomNavDrawerFragment.show(supportFragmentManager, bottomNavDrawerFragment.tag)
