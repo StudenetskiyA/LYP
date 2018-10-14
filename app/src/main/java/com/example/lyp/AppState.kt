@@ -19,8 +19,22 @@ class AppState (
 ) {
     lateinit var mView: MainActivity
 
-    fun getCurrentSong():SongData {
-      return currentSongsList[currentSongIndex]
+    fun getCurrentSong():SongData? {
+        return if (currentSongsList.isNotEmpty() && currentSongIndex<currentSongsList.size)
+            currentSongsList[currentSongIndex]
+        else null
+    }
+
+    fun getIndexInListFromSLdelta(delta :Int ) :Int {
+        return getIndexInListFromShuffledListIndex(getCurrentSongIndexInShuffledList()+delta)
+    }
+
+    fun getIndexInListFromShuffledListIndex(index : Int) :Int {
+        return currentSongsList.indexOf(currentShuffledSongsList[index])
+    }
+
+    fun getCurrentSongIndexInShuffledList() :Int {
+        return currentShuffledSongsList.indexOf(getCurrentSong())
     }
 
     fun init(mv: MainActivity) {

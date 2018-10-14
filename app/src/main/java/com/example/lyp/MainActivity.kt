@@ -34,16 +34,13 @@ val APP_PREFERENCES_MUSIC_FOLDER = "musicfolder"
 val APP_PREFERENCES_LINKS = "links"
 val APP_PREFERENCES_RANDOM = "random"
 val APP_PREFERENCES_REPEAT = "repeat"
-val APP_PREFERENCES_ANDOR = "andor"
-val APP_PREFERENCES_LAST_DATE = "lastdate"
+val APP_PREFERENCES_SORT = "repeat"
 val APP_PREFERENCES_PAGE = "page"
 val APP_PREFERENCES_SEARCH_STRING = "searchstring"
 val APP_PREFERENCES_ANTISEARCH_STRING = "antisearchstring"
 val APP_PREFERENCES_SEARCH_SPECIAL = "searchspecial"
 val APP_PREFERENCES_CURRENT_SONG = "currentsong"
-private val APP_PREFERENCES_BUTTON_PADDING = "buttonpadding"
 
-var tagsTempField: String = ""
 const val APP_TAG = "lyp-tag"
 var APP_PATH: String = ""
 private lateinit var mSettings: SharedPreferences
@@ -97,7 +94,10 @@ class MainActivity : AppCompatActivity() {
             adapter.notifyDataSetChanged()
 
             //Bind current track
-            track_name.text = appState.getCurrentSong().name
+            if (appState.getCurrentSong() != null)
+                track_name.text = appState.getCurrentSong()!!.name
+            //Bind current track tags
+            buildLinkField()
 
             //Bind total found
             tracks_found.text = """${getString(R.string.tracks_found_part1)} ${appState.currentSongsList.size} ${getString(R.string.tracks_found_part2)}"""
@@ -208,8 +208,8 @@ class MainActivity : AppCompatActivity() {
         }
         addtag.setOnClickListener {
             //Добавляет тег в базу
-            val a = {answer:String ->
-                Log.d(APP_TAG,"Add tag $answer")
+            val a = { answer: String ->
+                Log.d(APP_TAG, "Add tag $answer")
                 if (tags.text.contains(answer)) {
                     //TODO Message - tag already exist
                 } else {
@@ -220,7 +220,8 @@ class MainActivity : AppCompatActivity() {
                     editor?.apply()
                     //Снова читаем из настроек.
                     appState.allTags = readLinkFieldFromSettings()
-                }}
+                }
+            }
             getTextFromDialog(this, a)
         }
     }
@@ -241,7 +242,11 @@ class MainActivity : AppCompatActivity() {
 
         //Init database
         Log.i(APP_TAG, "Thread to create/open database started.")
-        if (!mDbSongsThread.isAlive) mDbSongsThread.start()
+        // if (!mDbSongsThread.isAlive) mDbSongsThread.start()
+        if (mDbSongsThread.state == Thread.State.NEW) {
+            mDbSongsThread.start()
+
+        }
         mDb = SongDataBase.getInstance(this)
 
         val layout0 = findViewById<RelativeLayout>(R.id.all_layout)
@@ -270,6 +275,7 @@ class MainActivity : AppCompatActivity() {
 
         //Set up view
         createListener()
+        buildLinkField()
         setSupportActionBar(bottom_app_bar)
 
         Log.i(APP_TAG, "End onCreate.")
@@ -361,7 +367,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun saveTrackTags() {
-        insertSongDataToDb(appState.getCurrentSong())
+        if (appState.getCurrentSong() != null)
+            insertSongDataToDb(appState.getCurrentSong()!!)
     }
 
     fun saveButtonState() {
@@ -389,7 +396,7 @@ class MainActivity : AppCompatActivity() {
         }
         start = 0
         val names = ArrayList<String>()
-        while ( links.indexOf(";", start) != -1) {
+        while (links.indexOf(";", start) != -1) {
             names.add(links.substring(start, links.indexOf(";", start)))
             start = links.indexOf(";", start) + 2
             i++
@@ -408,8 +415,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun buildLinkField() {
-        //Формирует кликабельный и выделенный текст из appState.allTags
-        //Выделенные сейчас теги хранятся в tagsTempField
+        //Формирует кликабельный и выделенный текст из appState.currentSong.tags
         val definition = appState.allTags.trim { it <= ' ' }
         tags.movementMethod = LinkMovementMethod.getInstance()
         tags.setText(definition, TextView.BufferType.SPANNABLE)
@@ -442,11 +448,13 @@ class MainActivity : AppCompatActivity() {
         compareText = "; $compareText"
         val ls = appState.allTags.split("; ")
         for (i in ls.indices) {
-            if (tagsTempField.contains(ls[i] + SPACE_IN_LINK)) {
-                // Log.d(APP_TAG, "link must be orange = " + ls[i])
-                val startIndex = compareText.indexOf("; " + ls[i] + SPACE_IN_LINK, 0)
-                if (startIndex != -1) {
-                    spans.setSpan(ForegroundColorSpan(resources.getColor(R.color.selectLink)), startIndex, startIndex + ls[i].length, Spannable.SPAN_PRIORITY_SHIFT)
+            if (appState.getCurrentSong() != null) {
+                if (appState.getCurrentSong()!!.tags.contains(ls[i] + SPACE_IN_LINK)) {
+                   // Log.d(APP_TAG, "link must be orange = " + ls[i])
+                    val startIndex = compareText.indexOf("; " + ls[i] + SPACE_IN_LINK, 0)
+                    if (startIndex != -1) {
+                        spans.setSpan(ForegroundColorSpan(resources.getColor(R.color.selectLink)), startIndex, startIndex + ls[i].length, Spannable.SPAN_PRIORITY_SHIFT)
+                    }
                 }
             }
         }
@@ -455,19 +463,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun selectLinkForTrack(linkSelected: String) {
         var txt = linkSelected
-        if (tagsTempField == "")  tagsTempField = ";"
+        if (appState.getCurrentSong() != null && appState.getCurrentSong()!!.tags == "") appState.getCurrentSong()!!.tags = ";"
 
         txt = txt.trim { it <= ' ' }
-
-        tagsTempField = if (tagsTempField.contains(txt + SPACE_IN_LINK)) {
-            val end = tagsTempField.indexOf(txt + SPACE_IN_LINK)
-            tagsTempField.substring(0, end) + tagsTempField.substring(end + txt.length + 1, tagsTempField.length)
-        } else {
-            tagsTempField + txt + SPACE_IN_LINK
+        val cs = appState.getCurrentSong()
+        if (cs != null) {
+            cs.tags = if (cs.tags.contains(txt + SPACE_IN_LINK)) {
+                val end = cs.tags.indexOf(txt + SPACE_IN_LINK)
+                cs.tags.substring(0, end) + cs.tags.substring(end + txt.length + 1, cs.tags.length)
+            } else {
+                cs.tags + txt + SPACE_IN_LINK
+            }
+            Log.d("$APP_TAG#tags", "Current track tags is ${cs.tags}")
+            saveTrackTags()
         }
-        Log.d("$APP_TAG#tags","tagTempField is $tagsTempField")
-        appState.getCurrentSong().tags = tagsTempField
-        saveTrackTags()
         buildLinkField()
     }
 
@@ -514,8 +523,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        Log.d(APP_TAG, "App onDestroy")
         SongDataBase.destroyInstance()
         mDbSongsThread.quit()
+        if (isBound) {
+            unbindService(myConnection)
+            isBound = false
+        }
         super.onDestroy()
     }
 }
