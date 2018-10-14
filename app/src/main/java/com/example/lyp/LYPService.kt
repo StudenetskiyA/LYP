@@ -40,6 +40,8 @@ class LYPService: Service()  {
         val command = intent.getSerializableExtra(EXTRA_COMMAND) as ServiceCommand
 
         val callIntent = PendingIntent.getActivity(applicationContext, 0, Intent(applicationContext, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT)
+        val title = if (appState.getCurrentSong()!=null) appState.getCurrentSong()!!.name
+        else "no title"
         val notification = Notification.Builder(this)
                 .setSmallIcon(R.drawable.notification_icon_background)
                 .setWhen(0)
@@ -47,7 +49,7 @@ class LYPService: Service()  {
                 .setOngoing(true)
                 .setAutoCancel(false)
                 .setContentTitle("LYM-player")
-                .setContentText(appState.currentSong.name)
+                .setContentText(title)
                 .build()
 
         //Proceed command
@@ -55,7 +57,7 @@ class LYPService: Service()  {
         when (command) {
             ServiceCommand.Stop -> {
                stop()
-                appState.currentSong = SongData(0,"","")
+              //  appState.getCurrentSong() = SongData(0,"","")
             }
             Start -> {
                 stop()
@@ -65,22 +67,22 @@ class LYPService: Service()  {
                 stop()
                 if (appState.shuffleState==ShuffleState.NoShuffle) { //TODO Add rating
                     if (!appState.currentSongsList.isEmpty()) {
-                        if (appState.currentSongsList.indexOf(appState.currentSong) != appState.currentSongsList.size-1 &&
-                                appState.currentSongsList.indexOf(appState.currentSong) != -1) {
-                            appState.currentSong = appState.currentSongsList[appState.currentSongsList.indexOf(appState.currentSong) + 1]
+                        if (appState.currentSongIndex != appState.currentSongsList.size-1 &&
+                                appState.currentSongIndex != -1) {
+                            appState.currentSongIndex = appState.currentSongIndex + 1
                         } else {
-                            appState.currentSong = appState.currentSongsList[0]
+                            appState.currentSongIndex = 0
                         }
                         play()
                     }
                 }
                 else {
                     if (!appState.currentShuffledSongsList.isEmpty()) {
-                        if (appState.currentShuffledSongsList.indexOf(appState.currentSong) != appState.currentShuffledSongsList.size-1 &&
-                                appState.currentShuffledSongsList.indexOf(appState.currentSong) != -1) {
-                            appState.currentSong = appState.currentShuffledSongsList[appState.currentShuffledSongsList.indexOf(appState.currentSong) + 1]
+                        if (appState.getCurrentSongIndexInShuffledList() != appState.currentShuffledSongsList.size-1 &&
+                                appState.getCurrentSongIndexInShuffledList() != -1) {
+                            appState.currentSongIndex = appState.getIndexInListFromSLdelta(1)
                         } else {
-                            appState.currentSong = appState.currentShuffledSongsList[0]
+                            appState.currentSongIndex = appState.getIndexInListFromShuffledListIndex(0)
                         }
                         play()
                     }
@@ -91,9 +93,9 @@ class LYPService: Service()  {
                 if (appState.shuffleState==ShuffleState.NoShuffle) {
                     if (!appState.currentSongsList.isEmpty()) {
                         when {
-                            appState.currentSongsList.indexOf(appState.currentSong) == -1 -> appState.currentSong = appState.currentSongsList[0]
-                            appState.currentSongsList.indexOf(appState.currentSong) == 0 -> appState.currentSong = appState.currentSongsList[appState.currentSongsList.lastIndex]
-                            else -> appState.currentSong = appState.currentSongsList[appState.currentSongsList.indexOf(appState.currentSong) - 1]
+                            appState.currentSongIndex == -1 -> appState.currentSongIndex = 0
+                            appState.currentSongIndex == 0 -> appState.currentSongIndex = appState.currentSongsList.lastIndex
+                            else -> appState.currentSongIndex = appState.currentSongIndex - 1
                         }
                         play()
                     }
@@ -101,12 +103,13 @@ class LYPService: Service()  {
                 else {
                     if (!appState.currentShuffledSongsList.isEmpty()) {
                         when {
-                            appState.currentShuffledSongsList.indexOf(appState.currentSong) == -1 ->
-                                appState.currentSong = appState.currentShuffledSongsList[0]
-                            appState.currentShuffledSongsList.indexOf(appState.currentSong) == 0 ->
-                                appState.currentSong = appState.currentShuffledSongsList[appState.currentShuffledSongsList.lastIndex]
+                            appState.getCurrentSongIndexInShuffledList() == -1 ->
+                                appState.currentSongIndex = appState.getIndexInListFromShuffledListIndex(0)
+                            appState.getCurrentSongIndexInShuffledList() == 0 ->
+                                appState.currentSongIndex = appState.getIndexInListFromShuffledListIndex(
+                                        appState.currentShuffledSongsList.lastIndex)
                             else ->
-                                appState.currentSong = appState.currentShuffledSongsList[appState.currentShuffledSongsList.indexOf(appState.currentSong) - 1]
+                                appState.currentSongIndex = appState.getIndexInListFromSLdelta( -1)
                         }
                         play()
                     }
@@ -121,10 +124,12 @@ class LYPService: Service()  {
     }
 
     private fun play() {
-        val uri = Uri.parse(appState.currentSong.path)
-        mPlayer = MediaPlayer.create(this, uri)
-        mPlayer?.start()
-        appState.playState = Play
+        if (appState.getCurrentSong()!=null) {
+            val uri = Uri.parse(appState.getCurrentSong()!!.path)
+            mPlayer = MediaPlayer.create(this, uri)
+            mPlayer?.start()
+            appState.playState = Play
+        }
     }
 
     private fun stop() {
